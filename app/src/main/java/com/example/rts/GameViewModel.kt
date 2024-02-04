@@ -3,6 +3,7 @@ package com.example.rts
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,7 +16,13 @@ import kotlin.random.Random
 
 class GameViewModel(private val soundPlayer: SoundPlayer) : ViewModel() {
     private val gameModel = MutableLiveData(GameModel())
-    val randomSequence = remember {mutableStateOf(generateRandomSequence().toMutableList())}
+    private var _randomSequence: MutableLiveData<MutableList<Int>>? = null
+    val randomSequence: LiveData<MutableList<Int>>
+        get() {
+            if (_randomSequence == null) _randomSequence =
+                MutableLiveData(generateRandomSequence().toMutableList())
+            return _randomSequence!!
+        }
     val state: LiveData<GameModel>
         get() = gameModel
 
