@@ -1,6 +1,8 @@
 //GameViewModel.kt
 package com.example.rts
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -13,7 +15,7 @@ import kotlin.random.Random
 
 class GameViewModel(private val soundPlayer: SoundPlayer) : ViewModel() {
     private val gameModel = MutableLiveData(GameModel())
-
+    val randomSequence = remember {mutableStateOf(generateRandomSequence().toMutableList())}
     val state: LiveData<GameModel>
         get() = gameModel
 

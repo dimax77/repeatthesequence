@@ -2,6 +2,7 @@
 package com.example.rts
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -35,13 +36,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.rts.ui.theme.RTSTheme
 //import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.system.exitProcess
 
 
 class MainActivity : ComponentActivity() {
@@ -52,14 +57,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             RTSTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     GameScreen(
                         viewModel = ViewModelProvider(
-                            this,
-                            GameViewModelFactory(soundPlayer)
-                        ).get(GameViewModel::class.java)
+                            this, GameViewModelFactory(soundPlayer)
+                        )[GameViewModel::class.java]
                     )
                 }
             }
@@ -67,14 +70,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@SuppressLint("CoroutineCreationDuringComposition", "MutableCollectionMutableState")
 @Composable
 fun GameScreen(viewModel: GameViewModel) {
     val interactionSource = List(4) { MutableInteractionSource() }
-    val coroutine = rememberCoroutineScope()
-    var buttons = remember { mutableStateOf(mutableListOf<Button>()) }
-    var isEnabled = remember{mutableStateOf(false) }
-
+    val isEnabled = remember { mutableStateOf(false) }
+    val coroutineScope = CoroutineScope(Dispatchers.Main)
     Row(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -82,8 +82,8 @@ fun GameScreen(viewModel: GameViewModel) {
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        Text(text = "Current level: ${viewModel.state.value!!.currentLevel}")
-        Text(text = "Top level: ${viewModel.state.value!!.topLevel}")
+        Text(text = "Current level: ${viewModel.state.value!!.currentLevel.intValue}")
+        Text(text = "Top level: ${viewModel.state.value!!.topLevel.intValue}")
     }
     Column(
         verticalArrangement = Arrangement.Center,
@@ -104,57 +104,60 @@ fun GameScreen(viewModel: GameViewModel) {
         )
 
     }
-    Game(isEnabled = isEnabled, viewModel = viewModel, interactionSource = interactionSource)
+    viewModel.state.value!!.randomSequence = viewModel.generateRandomSequence().toMutableList()
+    LaunchedEffect(viewModel.state.value!!.currentLevel.intValue) {
+        runGame(isEnabled, viewModel, interactionSource, coroutineScope)
+    }
 }
 
-@SuppressLint("CoroutineCreationDuringComposition")
-@Composable
-fun Game(isEnabled: MutableState<Boolean>, viewModel: GameViewModel, interactionSource: List<MutableInteractionSource>) {
-    val randomSequence = viewModel.generateRandomSequence()
-    var gameOver = false
-    while (!gameOver) {
-        PlaySequence(
+fun runGame(
+    isEnabled: MutableState<Boolean>,
+    viewModel: GameViewModel,
+    interactionSource: List<MutableInteractionSource>,
+    coroutineScope: CoroutineScope,
+) {
+    coroutineScope.launch {
+        val playSequenceJob = playSequence(
             viewModel = viewModel,
             interactionSource = interactionSource,
-            randomSequence = randomSequence
+            randomSequence = viewModel.state.value!!.randomSequence
         )
+        playSequenceJob.join()
         isEnabled.value = true
-//        WaitForUserInput(interactionSource = interactionSource, viewModel = viewModel, randomSequence = randomSequence)
-        if (viewModel.checkUserInput(randomSequence.toMutableList())) {
-            viewModel.state.value!!.currentLevel++
+        delay(3000)
+
+        while (viewModel.state.value!!.userInput.size < viewModel.state.value!!.randomSequence.size)
+            delay(100)
+        isEnabled.value = false
+        if (viewModel.checkUserInput(viewModel.state.value!!.randomSequence)) {
+            viewModel.state.value!!.currentLevel.intValue++
+            if (viewModel.state.value!!.currentLevel.intValue > viewModel.state.value!!.topLevel.intValue) viewModel.state.value!!.topLevel =
+                viewModel.state.value!!.currentLevel
+            viewModel.state.value!!.randomSequence.add((0..3).random())
+            viewModel.state.value!!.userInput.clear()
         } else {
-            gameOver = true
+            exitProcess(0)
         }
     }
 }
 
-@SuppressLint("CoroutineCreationDuringComposition")
-@Composable
-fun WaitForUserInput(
-    interactionSource: List<MutableInteractionSource>,
+fun waitForUserInput(
     viewModel: GameViewModel,
-    randomSequence: List<Int>
+    randomSequence: List<Int>,
 ) {
-    val coroutine = rememberCoroutineScope()
-    coroutine.launch {
-        while (true) {
-            if (!(viewModel.state.value!!.userInput.size < randomSequence.size))
-                break
-        }
+    viewModel.state.observeForever {
+        if (viewModel.state.value!!.userInput.size >= randomSequence.size) return@observeForever
     }
 }
 
-@SuppressLint("CoroutineCreationDuringComposition")
-@Composable
-fun PlaySequence(
+fun playSequence(
     viewModel: GameViewModel,
     interactionSource: List<MutableInteractionSource>,
     randomSequence: List<Int>
-) {
-    val coroutine = rememberCoroutineScope()
-    coroutine.launch {
+): Job {
+    val coroutineScope = CoroutineScope(Dispatchers.Main)
+    return coroutineScope.launch {
         for (buttonId in randomSequence) {
-
             delay(1000)
             val press = PressInteraction.Press(Offset.Zero)
             interactionSource[buttonId].emit(press)
@@ -162,9 +165,8 @@ fun PlaySequence(
             interactionSource[buttonId].emit(PressInteraction.Release(press))
         }
         viewModel.state.value!!.userPlaying = true
-        delay(10000)
+        delay(2000)
     }
-
 }
 
 @Composable
@@ -175,13 +177,9 @@ fun RowButton(
     isEnabled: MutableState<Boolean>
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceAround
+        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround
     ) {
         for (idx in indices) {
-//            val interactionSource: MutableInteractionSource =
-//                remember { MutableInteractionSource() }
-
             Button(
                 onClick = { viewModel.onButtonClicked(idx) },
                 interactionSource = interactionSource[idx],
@@ -201,8 +199,7 @@ fun GameScreenPreview() {
     RTSTheme {
         GameScreen(
             viewModel = ViewModelProvider(
-                LocalViewModelStoreOwner.current!!,
-                GameViewModelFactory(SoundPlayer(context))
+                LocalViewModelStoreOwner.current!!, GameViewModelFactory(SoundPlayer(context))
             ).get(GameViewModel::class.java)
         )
     }
