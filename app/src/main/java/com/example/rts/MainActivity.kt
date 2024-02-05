@@ -1,14 +1,10 @@
 //MainActivity.kt
 package com.example.rts
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
@@ -27,25 +23,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.rts.ui.theme.RTSTheme
-//import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.system.exitProcess
 
 
@@ -104,9 +97,14 @@ fun GameScreen(viewModel: GameViewModel) {
         )
 
     }
-    viewModel.state.value!!.randomSequence = viewModel.generateRandomSequence().toMutableList()
     LaunchedEffect(viewModel.state.value!!.currentLevel.intValue) {
-        runGame(isEnabled, viewModel, interactionSource, coroutineScope)
+        runGame(
+            isEnabled,
+            viewModel,
+            interactionSource,
+            coroutineScope,
+            viewModel.randomSequence.value!!
+        )
     }
 }
 
@@ -115,40 +113,46 @@ fun runGame(
     viewModel: GameViewModel,
     interactionSource: List<MutableInteractionSource>,
     coroutineScope: CoroutineScope,
+    randomSequence: List<Int>
 ) {
+    Log.d("Random Sequence", "$randomSequence")
     coroutineScope.launch {
         val playSequenceJob = playSequence(
             viewModel = viewModel,
             interactionSource = interactionSource,
-            randomSequence = viewModel.state.value!!.randomSequence
+            randomSequence = randomSequence
         )
         playSequenceJob.join()
         isEnabled.value = true
         delay(3000)
 
-        while (viewModel.state.value!!.userInput.size < viewModel.state.value!!.randomSequence.size)
+        while (viewModel.state.value!!.userInput.size < randomSequence.size)
             delay(100)
         isEnabled.value = false
-        if (viewModel.checkUserInput(viewModel.state.value!!.randomSequence)) {
-            viewModel.state.value!!.currentLevel.intValue++
+        if (viewModel.checkUserInput(viewModel.randomSequence.value!!)) {
+
             if (viewModel.state.value!!.currentLevel.intValue > viewModel.state.value!!.topLevel.intValue) viewModel.state.value!!.topLevel =
                 viewModel.state.value!!.currentLevel
-            viewModel.state.value!!.randomSequence.add((0..3).random())
+            viewModel.updateRandomSequence()
             viewModel.state.value!!.userInput.clear()
+            viewModel.state.value!!.currentLevel.intValue++
         } else {
+            Log.d("Random Sequence: ", "$randomSequence")
+            Log.d("User Input: ", "${viewModel.state.value!!.userInput}")
+            viewModel.resetState()
             exitProcess(0)
         }
     }
 }
-
-fun waitForUserInput(
-    viewModel: GameViewModel,
-    randomSequence: List<Int>,
-) {
-    viewModel.state.observeForever {
-        if (viewModel.state.value!!.userInput.size >= randomSequence.size) return@observeForever
-    }
-}
+//
+//fun waitForUserInput(
+//    viewModel: GameViewModel,
+//    randomSequence: List<Int>,
+//) {
+//    viewModel.state.observeForever {
+//        if (viewModel.state.value!!.userInput.size >= randomSequence.size) return@observeForever
+//    }
+//}
 
 fun playSequence(
     viewModel: GameViewModel,

@@ -1,6 +1,7 @@
 //GameViewModel.kt
 package com.example.rts
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -23,6 +24,17 @@ class GameViewModel(private val soundPlayer: SoundPlayer) : ViewModel() {
                 MutableLiveData(generateRandomSequence().toMutableList())
             return _randomSequence!!
         }
+
+    fun updateRandomSequence() {
+        _randomSequence?.value?.add((0..3).random())
+        _randomSequence?.postValue(_randomSequence?.value)
+    }
+
+    fun resetState(){
+        state.value?.userInput?.clear()
+        _randomSequence?.value?.clear()
+        state.value?.currentLevel?.intValue = 1
+    }
     val state: LiveData<GameModel>
         get() = gameModel
 
@@ -34,7 +46,8 @@ class GameViewModel(private val soundPlayer: SoundPlayer) : ViewModel() {
     }
 
     fun checkUserInput(randomSequence: MutableList<Int>): Boolean {
-        return randomSequence == gameModel.value!!.userInput
+        Log.d("userInput vs. randomSequence", "${randomSequence == gameModel.value?.userInput}")
+        return randomSequence == gameModel.value?.userInput
     }
 
     fun generateRandomSequence(): List<Int> {
