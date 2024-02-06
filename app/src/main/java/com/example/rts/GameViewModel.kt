@@ -1,6 +1,7 @@
 //GameViewModel.kt
 package com.example.rts
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,8 +16,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
-class GameViewModel(private val soundPlayer: SoundPlayer) : ViewModel() {
-    private val gameModel = MutableLiveData(GameModel())
+class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : ViewModel() {
+    private val gameModel = MutableLiveData(GameModel(context))
     private var _randomSequence: MutableLiveData<MutableList<Int>>? = null
     val randomSequence: LiveData<MutableList<Int>>
         get() {
@@ -25,16 +26,24 @@ class GameViewModel(private val soundPlayer: SoundPlayer) : ViewModel() {
             return _randomSequence!!
         }
 
+    fun clearUserInput() {
+        gameModel.value?.apply {
+            userInput = mutableListOf()
+        }
+        gameModel.postValue(gameModel.value)
+    }
+
     fun updateRandomSequence() {
         _randomSequence?.value?.add((0..3).random())
         _randomSequence?.postValue(_randomSequence?.value)
     }
 
-    fun resetState(){
+    fun resetState() {
         state.value?.userInput?.clear()
         _randomSequence?.value?.clear()
         state.value?.currentLevel?.intValue = 1
     }
+
     val state: LiveData<GameModel>
         get() = gameModel
 

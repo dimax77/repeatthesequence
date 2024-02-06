@@ -3,6 +3,7 @@ package com.example.rts
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,9 +13,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,7 +57,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     GameScreen(
                         viewModel = ViewModelProvider(
-                            this, GameViewModelFactory(soundPlayer)
+                            this, GameViewModelFactory(this, soundPlayer)
                         )[GameViewModel::class.java]
                     )
                 }
@@ -115,7 +118,6 @@ fun runGame(
     coroutineScope: CoroutineScope,
     randomSequence: List<Int>
 ) {
-    Log.d("Random Sequence", "$randomSequence")
     coroutineScope.launch {
         val playSequenceJob = playSequence(
             viewModel = viewModel,
@@ -129,12 +131,14 @@ fun runGame(
         while (viewModel.state.value!!.userInput.size < randomSequence.size)
             delay(100)
         isEnabled.value = false
-        if (viewModel.checkUserInput(viewModel.randomSequence.value!!)) {
+        val userInputMatch = viewModel.checkUserInput(viewModel.randomSequence.value!!)
+        if (userInputMatch) {
 
             if (viewModel.state.value!!.currentLevel.intValue > viewModel.state.value!!.topLevel.intValue) viewModel.state.value!!.topLevel =
                 viewModel.state.value!!.currentLevel
             viewModel.updateRandomSequence()
-            viewModel.state.value!!.userInput.clear()
+            viewModel.clearUserInput()
+            Log.d("user input size:", "${viewModel.state.value?.userInput?.size}")
             viewModel.state.value!!.currentLevel.intValue++
         } else {
             Log.d("Random Sequence: ", "$randomSequence")
@@ -187,8 +191,9 @@ fun RowButton(
             Button(
                 onClick = { viewModel.onButtonClicked(idx) },
                 interactionSource = interactionSource[idx],
-                modifier = Modifier.width(150.dp),
-                enabled = isEnabled.value
+                modifier = Modifier.width(150.dp).height(150.dp).padding(16.dp),
+                enabled = isEnabled.value,
+                colors = ButtonDefaults.buttonColors(viewModel.state.value!!.buttons[idx].color)
             ) {
                 Text(text = viewModel.state.value!!.buttons[idx].title)
             }
@@ -203,7 +208,8 @@ fun GameScreenPreview() {
     RTSTheme {
         GameScreen(
             viewModel = ViewModelProvider(
-                LocalViewModelStoreOwner.current!!, GameViewModelFactory(SoundPlayer(context))
+                LocalViewModelStoreOwner.current!!,
+                GameViewModelFactory(context, SoundPlayer(context))
             ).get(GameViewModel::class.java)
         )
     }
