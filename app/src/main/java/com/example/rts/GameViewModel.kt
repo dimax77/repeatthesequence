@@ -17,6 +17,12 @@ import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : ViewModel() {
+    fun game() {
+        viewModelScope.launch {
+
+        }
+    }
+
     private val gameModel = MutableLiveData(GameModel(context))
     private var _randomSequence: MutableLiveData<MutableList<Int>>? = null
     val randomSequence: LiveData<MutableList<Int>>
@@ -25,6 +31,10 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
                 MutableLiveData(generateRandomSequence().toMutableList())
             return _randomSequence!!
         }
+
+    fun setWaitForUserInput(value: Boolean) {
+        gameModel.value?.setWaitForUserInput(value)
+    }
 
     fun clearUserInput() {
         gameModel.value?.apply {
@@ -50,8 +60,32 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
     fun onButtonClicked(buttonId: Int) {
         soundPlayer.playSound(SoundUtil.getSoundResource(buttonId))
         if (gameModel.value!!.userPlaying) {
-            gameModel.value!!.userInput.add(buttonId)
+            Log.d("ViewModel:", "Check user click")
+            checkUserClick(buttonId)
+            if(gameModel.value!!.userInput.size >= _randomSequence?.value?.size!!) {
+                gameModel.value!!.currentLevel.intValue++
+                gameModel.value!!.userPlaying = false
+                gameModel.value?.userInput?.clear()
+                updateRandomSequence()
+            }
         }
+    }
+
+    private fun checkUserClick(buttonId: Int): Boolean {
+        gameModel.value!!.userInput.add(buttonId)
+        val id = gameModel.value!!.userInput.size - 1
+        if (_randomSequence?.value?.get(id) != buttonId) {
+            gameModel.value?.gameOver = true
+            Log.d("Game Over", "Game over condition met")
+            gameModel.postValue(gameModel.value)
+            return false
+        }
+        return true
+    }
+
+    fun checkUserInput(): Boolean {
+        Log.d("Check User Input", "No param")
+        return gameModel.value?.userInput == gameModel.value?.randomSequence
     }
 
     fun checkUserInput(randomSequence: MutableList<Int>): Boolean {
