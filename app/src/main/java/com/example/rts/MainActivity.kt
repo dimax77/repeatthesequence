@@ -3,8 +3,6 @@ package com.example.rts
 
 import android.os.Bundle
 import android.util.Log
-import android.widget.AutoCompleteTextView.OnDismissListener
-import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,11 +22,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -36,26 +36,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
-import com.example.rts.ui.theme.RTSTheme
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleCoroutineScope
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.liveData
 import androidx.lifecycle.viewModelScope
+import com.example.rts.ui.theme.RTSTheme
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.system.exitProcess
 
 
 class MainActivity : ComponentActivity() {
@@ -120,7 +105,7 @@ class MainActivity : ComponentActivity() {
         }
 
         SideEffect {
-            currentLevel.value = viewModel.state.value!!.currentLevel.intValue
+            currentLevel.intValue = viewModel.state.value!!.currentLevel.intValue
         }
 
         SideEffect {
@@ -139,7 +124,7 @@ class MainActivity : ComponentActivity() {
 
         if (gameOver.value) {
             viewModel.job.cancel()
-            showGameOverDialog(viewModel.state.value!!.currentLevel.intValue) {
+            ShowGameOverDialog(viewModel.state.value!!.currentLevel.intValue) {
                 viewModel.generateNewSequence()
                 Log.d("State before restart game", "")
                 Log.d("gameOver", "${viewModel.state.value!!.gameOver.value}")
@@ -175,7 +160,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun showGameOverDialog(currentLevel: Int, onDismiss: () -> Unit) {
+    fun ShowGameOverDialog(currentLevel: Int, onDismiss: () -> Unit) {
         var dialogVisible by remember { mutableStateOf(true) }
         AlertDialog(
             onDismissRequest = {
@@ -226,7 +211,7 @@ class MainActivity : ComponentActivity() {
     @Preview(showBackground = true)
     @Composable
     fun GameScreenPreview() {
-        val context = LocalContext.current
+        LocalContext.current
         RTSTheme {
             GameScreen()
         }
