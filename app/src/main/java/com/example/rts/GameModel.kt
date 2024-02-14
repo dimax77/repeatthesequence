@@ -11,18 +11,20 @@ import androidx.core.content.ContextCompat
 
 class GameModel(private val context: Context) {
     private var _waitForUserInput = mutableStateOf(false)
-    var waitForUserInput: State<Boolean> = _waitForUserInput
     fun setWaitForUserInput(value: Boolean) {
         _waitForUserInput.value = value
         Log.d("waitForUserInput", "was set to $value")
     }
 
+    val waitForUserInput: Boolean
+        get() {
+            return _waitForUserInput.value
+        }
     var currentLevel = mutableIntStateOf(1)
     var topLevel = mutableIntStateOf(1)
-    var userPlaying = false
-    var gameOver = false
+    var userPlaying = mutableStateOf(false)
+    var gameOver = mutableStateOf(false)
     var userInput = mutableListOf<Int>()
-    var randomSequence = mutableListOf<Int>()
     val buttons = List<ButtonState>(4) { it ->
         ButtonState(
             id = it,

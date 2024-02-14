@@ -11,20 +11,17 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : ViewModel() {
-    fun game() {
-        viewModelScope.launch {
-
-        }
-    }
 
     private val gameModel = MutableLiveData(GameModel(context))
     private var _randomSequence: MutableLiveData<MutableList<Int>>? = null
+
     val randomSequence: LiveData<MutableList<Int>>
         get() {
             if (_randomSequence == null) _randomSequence =
@@ -32,26 +29,34 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
             return _randomSequence!!
         }
 
+    private var _job = Job()
+        get() {
+            if (field.isCancelled) field = Job()
+            return field
+        }
+    val job: Job
+        get() {
+            return _job
+        }
+
     fun setWaitForUserInput(value: Boolean) {
         gameModel.value?.setWaitForUserInput(value)
     }
 
-    fun clearUserInput() {
-        gameModel.value?.apply {
-            userInput = mutableListOf()
-        }
-        gameModel.postValue(gameModel.value)
-    }
-
-    fun updateRandomSequence() {
+    private fun updateRandomSequence() {
         _randomSequence?.value?.add((0..3).random())
         _randomSequence?.postValue(_randomSequence?.value)
     }
 
+
+    fun generateNewSequence() {
+        _randomSequence?.value = generateRandomSequence().toMutableList()
+        Log.d("viewModel.generateNewSequence", "New sequence generated")
+    }
+
     fun resetState() {
         state.value?.userInput?.clear()
-        _randomSequence?.value?.clear()
-        state.value?.currentLevel?.intValue = 1
+        state.value?.gameOver?.value = false
     }
 
     val state: LiveData<GameModel>
@@ -59,47 +64,31 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
 
     fun onButtonClicked(buttonId: Int) {
         soundPlayer.playSound(SoundUtil.getSoundResource(buttonId))
-        if (gameModel.value!!.userPlaying) {
-            Log.d("ViewModel:", "Check user click")
+        if (gameModel.value!!.waitForUserInput) {
             checkUserClick(buttonId)
-            if(gameModel.value!!.userInput.size >= _randomSequence?.value?.size!!) {
-                gameModel.value!!.currentLevel.intValue++
-                gameModel.value!!.userPlaying = false
+            if (gameModel.value!!.userInput.size >= _randomSequence?.value?.size!!) {
+                Log.d("viewModel.onButtonClicked", "Level updated")
+                gameModel.value!!.userPlaying.value = false
                 gameModel.value?.userInput?.clear()
                 updateRandomSequence()
+                gameModel.value!!.setWaitForUserInput(value = false)
+                gameModel.value!!.currentLevel.intValue++
             }
         }
     }
 
-    private fun checkUserClick(buttonId: Int): Boolean {
+    private fun checkUserClick(buttonId: Int) {
         gameModel.value!!.userInput.add(buttonId)
         val id = gameModel.value!!.userInput.size - 1
         if (_randomSequence?.value?.get(id) != buttonId) {
-            gameModel.value?.gameOver = true
-            Log.d("Game Over", "Game over condition met")
-            gameModel.postValue(gameModel.value)
-            return false
+            gameModel.value!!.setWaitForUserInput(false)
+            gameModel.value!!.gameOver?.value = true
+            Log.d("viewModel.checkUserClick", "Game Over")
         }
-        return true
     }
 
-    fun checkUserInput(): Boolean {
-        Log.d("Check User Input", "No param")
-        return gameModel.value?.userInput == gameModel.value?.randomSequence
-    }
-
-    fun checkUserInput(randomSequence: MutableList<Int>): Boolean {
-        Log.d("userInput vs. randomSequence", "${randomSequence == gameModel.value?.userInput}")
-        return randomSequence == gameModel.value?.userInput
-    }
-
-    fun generateRandomSequence(): List<Int> {
+    private fun generateRandomSequence(): List<Int> {
         return List(4) { Random.nextInt(0, 4) }
     }
 
-    suspend fun pause(delay: Long) {
-        withContext(Dispatchers.Default) {
-            delay(delay)
-        }
-    }
 }

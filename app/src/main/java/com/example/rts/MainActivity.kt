@@ -3,6 +3,7 @@ package com.example.rts
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.AutoCompleteTextView.OnDismissListener
 import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -50,6 +52,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
@@ -61,7 +64,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: GameViewModel
     private lateinit var coroutineScope: CoroutineScope
 
-    @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel = ViewModelProvider(
@@ -80,10 +82,12 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun GameScreen() {
-        val waitForUserInput = remember { mutableStateOf(false) }
+        if (viewModel.state.value!!.currentLevel.intValue == 0) viewModel.state.value!!.currentLevel.intValue =
+            1
         val isEnabled = remember { mutableStateOf(false) }
-        val gameOver = remember { mutableStateOf(viewModel.state.value!!.gameOver) }
-        val currentLevel = remember { mutableIntStateOf(viewModel.state.value!!.currentLevel.intValue) }
+        val gameOver = remember { mutableStateOf(viewModel.state.value!!.gameOver.value) }
+        val currentLevel =
+            remember { mutableIntStateOf(viewModel.state.value!!.currentLevel.intValue) }
 
         Row(
             verticalAlignment = Alignment.Top,
@@ -114,57 +118,40 @@ class MainActivity : ComponentActivity() {
             )
 
         }
-//        viewModel.state.observeAsState().value?.waitForUserInput?.value?.let {
-//            if (it) {
-//                runGame(isEnabled, viewModel, coroutineScope, viewModel.randomSequence.value!!)
-//                viewModel.checkUserInput()
-//                Log.d("Observer", "Wait for user input")
-//            }
-//
-//        }
+
         SideEffect {
             currentLevel.value = viewModel.state.value!!.currentLevel.intValue
         }
 
         SideEffect {
-            gameOver.value = viewModel.state.value!!.gameOver
-        }
-        LaunchedEffect(viewModel.state.value) {
-            if (viewModel.state.value!!.gameOver) {
-                gameOver.value = true
-            }
-        }
-//        SideEffect() {
-//            currentLevel.intValue = viewModel.state.value!!.currentLevel.intValue
-//        }
-        LaunchedEffect(currentLevel.value) {
-            if(!gameOver.value) {
-                Log.d("Current level updated", "$currentLevel")
-                playSequence(
-                    viewModel = viewModel,
-                    interactionSource = interactionSource,
-                    randomSequence = viewModel.randomSequence.value!!,
-                    isEnabled
-                )
-            }
-
+            gameOver.value = viewModel.state.value!!.gameOver.value
         }
 
-//        LaunchedEffect(
-//            rememberUpdatedState(waitForUserInput.value),
-//            rememberUpdatedState(viewModel.state.value!!.currentLevel.intValue)
-//        ) {
-//            Log.d("GameLog", "LaunchedEffect triggered")
-//            if (waitForUserInput.value) {
-//                Log.d("rauGame Launched Effect", "trying run Game")
-//                runGame(isEnabled, viewModel, coroutineScope, viewModel.randomSequence.value!!)
-//            }
-//        }
+        if (!gameOver.value && !viewModel.state.value!!.waitForUserInput) {
+            isEnabled.value = false
+            playSequence(
+                viewModel = viewModel,
+                interactionSource = interactionSource,
+                randomSequence = viewModel.randomSequence.value!!,
+                isEnabled
+            )
+        }
 
         if (gameOver.value) {
-            showGameOverDialog(viewModel.state.value!!.currentLevel.intValue)
+            viewModel.job.cancel()
+            showGameOverDialog(viewModel.state.value!!.currentLevel.intValue) {
+                viewModel.generateNewSequence()
+                Log.d("State before restart game", "")
+                Log.d("gameOver", "${viewModel.state.value!!.gameOver.value}")
+                Log.d("waitForUserInput", "${viewModel.state.value!!.waitForUserInput}")
+                viewModel = ViewModelProvider(
+                    this, GameViewModelFactory(this, soundPlayer)
+                )[GameViewModel::class.java]
+                coroutineScope = viewModel.viewModelScope
+                viewModel.state.value?.currentLevel?.intValue = 0
+            }
         }
-        waitForUserInput.value = false
+        Log.d("gameScreen", "Recomposition")
     }
 
     private fun playSequence(
@@ -172,9 +159,8 @@ class MainActivity : ComponentActivity() {
         interactionSource: List<MutableInteractionSource>,
         randomSequence: List<Int>,
         isEnabled: MutableState<Boolean>
-    ): Job {
-        val coroutineScope = CoroutineScope(Dispatchers.Main)
-        return coroutineScope.launch {
+    ) {
+        coroutineScope.launch(viewModel.job) {
             for (buttonId in randomSequence) {
                 delay(1000)
                 val press = PressInteraction.Press(Offset.Zero)
@@ -182,8 +168,6 @@ class MainActivity : ComponentActivity() {
                 viewModel.onButtonClicked(buttonId)
                 interactionSource[buttonId].emit(PressInteraction.Release(press))
             }
-            viewModel.state.value!!.userPlaying = true
-
             delay(2000)
             isEnabled.value = true
             viewModel.setWaitForUserInput(true)
@@ -191,37 +175,24 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun showGameOverDialog(currentLevel: Int) {
+    fun showGameOverDialog(currentLevel: Int, onDismiss: () -> Unit) {
+        var dialogVisible by remember { mutableStateOf(true) }
         AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = {
+                dialogVisible = false
+                onDismiss()
+            },
             title = { Text("Game Over") },
             text = { Text("Your level: $currentLevel") },
             confirmButton = {
-                Button(onClick = { }) {
+                Button(onClick = {
+                    viewModel.resetState()
+                    dialogVisible = false
+                    onDismiss()
+                }) {
                     Text("Restart")
                 }
             })
-    }
-
-    private fun runGame(
-        isEnabled: MutableState<Boolean>,
-        viewModel: GameViewModel,
-        coroutineScope: CoroutineScope,
-        randomSequence: List<Int>
-    ) {
-        coroutineScope.launch {
-            isEnabled.value = true
-            delay(3000)
-            while (viewModel.state.value!!.userInput.size < randomSequence.size && !viewModel.state.value?.gameOver!!)
-                delay(100)
-            isEnabled.value = false
-            if (viewModel.state.value!!.currentLevel.intValue > viewModel.state.value!!.topLevel.intValue)
-                viewModel.state.value!!.topLevel.intValue =
-                    viewModel.state.value!!.currentLevel.intValue + 1
-            viewModel.state.value?.userInput?.clear()
-            viewModel.updateRandomSequence()
-            viewModel.state.value!!.currentLevel.intValue++
-        }
     }
 
 
@@ -257,12 +228,7 @@ class MainActivity : ComponentActivity() {
     fun GameScreenPreview() {
         val context = LocalContext.current
         RTSTheme {
-            GameScreen(
-//                viewModel = ViewModelProvider(
-//                    LocalViewModelStoreOwner.current!!,
-//                    GameViewModelFactory(context, SoundPlayer(context))
-//                ).get(GameViewModel::class.java)
-            )
+            GameScreen()
         }
     }
 }
