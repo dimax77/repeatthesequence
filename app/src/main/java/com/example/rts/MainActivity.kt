@@ -37,6 +37,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.rts.ui.theme.RTSTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -57,16 +62,59 @@ class MainActivity : ComponentActivity() {
         coroutineScope = viewModel.viewModelScope
 
         setContent {
-            RTSTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) { GameScreen() }
+            val navController = rememberNavController()
+            NavHost(navController = navController, startDestination = "gameScreen") {
+                composable("gameScreen") {
+                    GameScreenFragment(navController = navController, viewModel = viewModel)
+                }
+                composable("aboutFragment") {
+                    AboutFragment(navController = navController)
+                }
             }
+            Button(
+
+                onClick = {
+                    navController.navigate("gameScreen") {
+                        popUpTo("gameScreen") {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }, modifier = Modifier.padding(16.dp)
+            ) {
+                Text("New Game")
+            }
+
+            Button(
+                onClick = {
+                    navController.navigate("aboutFragment") {
+                        popUpTo("aboutFragment") {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }, modifier = Modifier
+                    .padding(16.dp)
+            ) {
+                Text("About")
+            }
+//            RTSTheme {
+//                Surface(
+//                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
+//                ) { GameScreen() }
+//            }
         }
     }
 
     @Composable
-    fun GameScreen() {
+    fun GameScreenFragment(navController: NavController, viewModel: GameViewModel) {
+        Button(
+            onClick = {
+                navController.navigate("aboutFragment")
+            }
+        ) {
+            Text("About")
+        }
         if (viewModel.state.value!!.currentLevel.intValue == 0) viewModel.state.value!!.currentLevel.intValue =
             1
         val isEnabled = remember { mutableStateOf(false) }
@@ -129,10 +177,7 @@ class MainActivity : ComponentActivity() {
                 Log.d("State before restart game", "")
                 Log.d("gameOver", "${viewModel.state.value!!.gameOver.value}")
                 Log.d("waitForUserInput", "${viewModel.state.value!!.waitForUserInput}")
-                viewModel = ViewModelProvider(
-                    this, GameViewModelFactory(this, soundPlayer)
-                )[GameViewModel::class.java]
-                coroutineScope = viewModel.viewModelScope
+
                 viewModel.state.value?.currentLevel?.intValue = 0
             }
         }
@@ -158,6 +203,18 @@ class MainActivity : ComponentActivity() {
             viewModel.setWaitForUserInput(true)
         }
     }
+
+    @Composable
+    fun AboutFragment(navController: NavHostController) {
+        Button(
+            onClick = {
+                navController.popBackStack()
+            }
+        ) {
+            Text("Back to Game")
+        }
+    }
+
 
     @Composable
     fun ShowGameOverDialog(currentLevel: Int, onDismiss: () -> Unit) {
@@ -211,9 +268,9 @@ class MainActivity : ComponentActivity() {
     @Preview(showBackground = true)
     @Composable
     fun GameScreenPreview() {
-        LocalContext.current
+        val navController = rememberNavController()
         RTSTheme {
-            GameScreen()
+            GameScreenFragment(navController, viewModel)
         }
     }
 }
