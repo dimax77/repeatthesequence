@@ -17,9 +17,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
-class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : ViewModel() {
+class GameViewModel(context: Context, private val soundPlayer: SoundPlayer, topLevel: Int) : ViewModel() {
 
-    private val gameModel = MutableLiveData(GameModel(context))
+    private val gameModel = MutableLiveData(GameModel(context, topLevel))
     private var _randomSequence: MutableLiveData<MutableList<Int>>? = null
 
     val randomSequence: LiveData<MutableList<Int>>
@@ -73,6 +73,8 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
                 updateRandomSequence()
                 gameModel.value!!.setWaitForUserInput(value = false)
                 gameModel.value!!.currentLevel.intValue++
+                if (gameModel.value!!.topLevel.intValue < gameModel.value!!.currentLevel.intValue)
+                    gameModel.value!!.topLevel.intValue = gameModel.value!!.currentLevel.intValue
             }
         }
     }
