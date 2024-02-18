@@ -1,6 +1,8 @@
 //MainActivity.kt
 package com.example.rts
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -42,17 +44,20 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+private const val TOP_LEVEL_VALUE = "top_level"
 
 class MainActivity : ComponentActivity() {
     private val soundPlayer = SoundPlayer(this)
     private val interactionSource = List(4) { MutableInteractionSource() }
     private lateinit var viewModel: GameViewModel
     private lateinit var coroutineScope: CoroutineScope
+    private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sharedPreferences = getPreferences(Context.MODE_PRIVATE)
         viewModel = ViewModelProvider(
-            this, GameViewModelFactory(this, soundPlayer)
+            this, GameViewModelFactory(this, soundPlayer, getTopLevelValue())
         )[GameViewModel::class.java]
         coroutineScope = viewModel.viewModelScope
 
@@ -63,6 +68,20 @@ class MainActivity : ComponentActivity() {
                 ) { GameScreen() }
             }
         }
+    }
+
+    private fun updateSharedPreferences(newTopLevelValue: Int) {
+        val currentTopLevelValue = sharedPreferences.getInt(TOP_LEVEL_VALUE, 1)
+        if (newTopLevelValue > currentTopLevelValue) {
+            with(sharedPreferences.edit()) {
+                putInt(TOP_LEVEL_VALUE, newTopLevelValue)
+                apply()
+            }
+        }
+    }
+
+    private fun getTopLevelValue(): Int {
+        return sharedPreferences.getInt(TOP_LEVEL_VALUE, 1)
     }
 
     @Composable
@@ -114,6 +133,7 @@ class MainActivity : ComponentActivity() {
 
         if (!gameOver.value && !viewModel.state.value!!.waitForUserInput) {
             isEnabled.value = false
+            updateSharedPreferences(viewModel.state.value!!.topLevel.intValue)
             playSequence(
                 viewModel = viewModel,
                 interactionSource = interactionSource,
@@ -127,7 +147,7 @@ class MainActivity : ComponentActivity() {
             ShowGameOverDialog(viewModel.state.value!!.currentLevel.intValue, {
                 viewModel.generateNewSequence()
                 viewModel = ViewModelProvider(
-                    this, GameViewModelFactory(this, soundPlayer)
+                    this, GameViewModelFactory(this, soundPlayer, getTopLevelValue())
                 )[GameViewModel::class.java]
                 coroutineScope = viewModel.viewModelScope
                 viewModel.state.value?.currentLevel?.intValue = 0

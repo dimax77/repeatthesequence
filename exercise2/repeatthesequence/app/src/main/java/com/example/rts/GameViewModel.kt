@@ -3,23 +3,16 @@ package com.example.rts
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
-class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : ViewModel() {
+class GameViewModel(context: Context, private val soundPlayer: SoundPlayer, topLevelValue: Int) :
+    ViewModel() {
 
-    private val gameModel = MutableLiveData(GameModel(context))
+    private val gameModel = MutableLiveData(GameModel(context, topLevelValue))
     private var _randomSequence: MutableLiveData<MutableList<Int>>? = null
 
     val randomSequence: LiveData<MutableList<Int>>
@@ -73,6 +66,9 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
                 updateRandomSequence()
                 gameModel.value!!.setWaitForUserInput(value = false)
                 gameModel.value!!.currentLevel.intValue++
+                if (gameModel.value!!.topLevel.intValue < gameModel.value!!.currentLevel.intValue)
+                    gameModel.value!!.topLevel.intValue = gameModel.value!!.currentLevel.intValue
+
             }
         }
     }
@@ -82,7 +78,7 @@ class GameViewModel(context: Context, private val soundPlayer: SoundPlayer) : Vi
         val id = gameModel.value!!.userInput.size - 1
         if (_randomSequence?.value?.get(id) != buttonId) {
             gameModel.value!!.setWaitForUserInput(false)
-            gameModel.value!!.gameOver?.value = true
+            gameModel.value!!.gameOver.value = true
             Log.d("viewModel.checkUserClick", "Game Over")
         }
     }
