@@ -4,7 +4,6 @@ package com.example.rts
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,6 +11,7 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,24 +35,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.rts.ui.theme.RTSTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.res.painterResource
-import androidx.navigation.NavController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 
 const val TOP_LEVEL_VALUE = "top_level"
 
@@ -127,16 +125,38 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun AboutScreen(navController: NavController, viewModel: GameViewModel) {
+        BackAction {
+            viewModel.generateNewSequence()
+
+            this.viewModel = ViewModelProvider(
+                this, GameViewModelFactory(this, soundPlayer, getTopLevelValue())
+            )[GameViewModel::class.java]
+            coroutineScope = viewModel.viewModelScope
+            navController.navigate("Home")
+        }
         Column(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(22.dp)
         ) {
-            Text(text = "Author: MockingB")
-            Text(text = "${viewModel.state.value!!.topLevel.intValue}")
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(fontSize = 20.sp)) {
+                        append("Repeat The Sequence Game\n")
+                    }
+                    append("Is based on Simon Game, an electronic memory game that challenges players to repeat a sequence of colors and sounds. ")
+                    append("The game was invented by Ralph H. Baer and Howard J. Morrison and first launched in 1978. ")
+                    append("The game consists of a circular device with four large colored buttons: green, red, yellow, and blue.")
+                }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Copyright, MockingB 2024",
+                style = MaterialTheme.typography.displaySmall
+            )
         }
-
     }
+
 
     @Composable
     fun GameScreen(navController: NavController) {
@@ -147,34 +167,46 @@ class MainActivity : ComponentActivity() {
         val currentLevel =
             remember { mutableIntStateOf(viewModel.state.value!!.currentLevel.intValue) }
 
-        Row(
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween,
+
+
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(text = "Current level: ${viewModel.state.value!!.currentLevel.intValue}")
-            Text(text = "Top level: ${viewModel.state.value!!.topLevel.intValue}")
-        }
-        Column(
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            RowButton(
-                viewModel = viewModel,
-                indices = listOf(0, 1),
-                interactionSource = interactionSource,
-                isEnabled = isEnabled
-            )
-            RowButton(
-                viewModel = viewModel,
-                indices = listOf(2, 3),
-                interactionSource = interactionSource,
-                isEnabled = isEnabled
-            )
+            BackAction {
+                viewModel.job.cancel()
+                navController.navigate("Home")
+            }
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(text = "Current level: ${viewModel.state.value!!.currentLevel.intValue}")
+                Text(text = "Top level: ${viewModel.state.value!!.topLevel.intValue}")
+            }
+            Column(
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                RowButton(
+                    viewModel = viewModel,
+                    indices = listOf(0, 1),
+                    interactionSource = interactionSource,
+                    isEnabled = isEnabled
+                )
+                RowButton(
+                    viewModel = viewModel,
+                    indices = listOf(2, 3),
+                    interactionSource = interactionSource,
+                    isEnabled = isEnabled
+                )
 
+            }
         }
 
         SideEffect {
@@ -214,8 +246,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun FreeGameScreen(onBack: () -> Unit) {
-        val isEnabled = remember { mutableStateOf(true) }
+    private fun BackAction(onBack: () -> Unit) {
         Row(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -223,26 +254,7 @@ class MainActivity : ComponentActivity() {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Button(onClick = { onBack() }) { Text(text = "Back") }
-        }
-        Column(
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            RowButton(
-                viewModel = viewModel,
-                indices = listOf(0, 1),
-                interactionSource = interactionSource,
-                isEnabled = isEnabled
-            )
-            RowButton(
-                viewModel = viewModel,
-                indices = listOf(2, 3),
-                interactionSource = interactionSource,
-                isEnabled = isEnabled
-            )
-
+            Button(onClick = { onBack() }) { Text(text = "<---") }
         }
     }
 
@@ -278,6 +290,7 @@ class MainActivity : ComponentActivity() {
             text = { Text("Your level: $currentLevel") },
             confirmButton = {
                 Button(onClick = {
+                    viewModel.resetState()
                     dialogVisible = false
                     onHome()
                 }) {
