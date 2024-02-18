@@ -157,27 +157,6 @@ class MainActivity : ComponentActivity() {
             )
 
         }
-        //-------------DEBUG_____________
-
-        Log.d("Gamescreen", "Recomposition")
-
-        LaunchedEffect(isEnabled.value) {
-            Log.d("GameScreen", "               by isEnabled")
-        }
-
-        LaunchedEffect(navController) {
-            Log.d("GameScreen", "               by navController")
-        }
-
-        LaunchedEffect(viewModel.state.value!!.gameOver.value) {
-            Log.d("GameScreen", "               by gameOver")
-        }
-
-        LaunchedEffect(viewModel.state.value!!.waitForUserInput) {
-            Log.d("GameScreen", "               by waitForUserInput")
-        }
-
-        //-------------END DEBUG---------
 
         SideEffect {
             currentLevel.intValue = viewModel.state.value!!.currentLevel.intValue
@@ -187,7 +166,7 @@ class MainActivity : ComponentActivity() {
             gameOver.value = viewModel.state.value!!.gameOver.value
         }
 
-        if (!gameOver.value && !viewModel.state.value!!.waitForUserInput) {
+        if (!gameOver.value && !viewModel.state.value!!.waitForUserInput&&isEnabled.value) {
             isEnabled.value = false
             playSequence(
                 viewModel = viewModel,
@@ -206,6 +185,7 @@ class MainActivity : ComponentActivity() {
                 )[GameViewModel::class.java]
                 coroutineScope = viewModel.viewModelScope
                 viewModel.state.value?.currentLevel?.intValue = 0
+                isEnabled.value = true
             }) {
                 setContent {
                     RTSTheme {
