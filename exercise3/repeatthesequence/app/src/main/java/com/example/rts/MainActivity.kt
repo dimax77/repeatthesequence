@@ -37,11 +37,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.compose.rememberNavController
 import com.example.rts.ui.theme.RTSTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.res.painterResource
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 
 class MainActivity : ComponentActivity() {
     private val soundPlayer = SoundPlayer(this)
@@ -56,20 +65,65 @@ class MainActivity : ComponentActivity() {
         )[GameViewModel::class.java]
         coroutineScope = viewModel.viewModelScope
 
+
         setContent {
             RTSTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) { GameScreen() }
+                ) {
+                    val navController = rememberNavController()
+                    NavHost(navController = navController, startDestination = "Home") {
+                        composable("Home") {
+                            HomeScreen(navController)
+                        }
+                        composable("Game") {
+                            GameScreen(navController)
+                        }
+                        composable("About") {
+                            AboutScreen(navController, viewModel)
+                        }
+                    }
+//                    GameScreen()
+                }
+            }
+        }
+    }
+
+
+    @Composable
+    fun HomeScreen(navController: NavController) {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Button(onClick = { navController.navigate("Game") }) {
+                Text(text = "New Game")
+            }
+            Button(onClick = { navController.navigate("About") }) {
+                Text(text = "About")
             }
         }
     }
 
     @Composable
-    fun GameScreen() {
+    fun AboutScreen(navController: NavController, viewModel: GameViewModel) {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Author: MockingB")
+            Text(text = "${viewModel.state.value!!.topLevel.intValue}")
+        }
+
+    }
+
+    @Composable
+    fun GameScreen(navController: NavController) {
         if (viewModel.state.value!!.currentLevel.intValue == 0) viewModel.state.value!!.currentLevel.intValue =
             1
-        val isEnabled = remember { mutableStateOf(false) }
+        val isEnabled = remember { mutableStateOf(true) }
         val gameOver = remember { mutableStateOf(viewModel.state.value!!.gameOver.value) }
         val currentLevel =
             remember { mutableIntStateOf(viewModel.state.value!!.currentLevel.intValue) }
@@ -103,6 +157,27 @@ class MainActivity : ComponentActivity() {
             )
 
         }
+        //-------------DEBUG_____________
+
+        Log.d("Gamescreen", "Recomposition")
+
+        LaunchedEffect(isEnabled.value) {
+            Log.d("GameScreen", "               by isEnabled")
+        }
+
+        LaunchedEffect(navController) {
+            Log.d("GameScreen", "               by navController")
+        }
+
+        LaunchedEffect(viewModel.state.value!!.gameOver.value) {
+            Log.d("GameScreen", "               by gameOver")
+        }
+
+        LaunchedEffect(viewModel.state.value!!.waitForUserInput) {
+            Log.d("GameScreen", "               by waitForUserInput")
+        }
+
+        //-------------END DEBUG---------
 
         SideEffect {
             currentLevel.intValue = viewModel.state.value!!.currentLevel.intValue
@@ -145,7 +220,7 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier.fillMaxSize(),
                                             color = MaterialTheme.colorScheme.background
                                         ) {
-                                            GameScreen()
+                                            GameScreen(navController)
                                         }
                                     }
                                 }
@@ -155,7 +230,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        Log.d("gameScreen", "Recomposition")
+
     }
 
     @Composable
@@ -270,8 +345,9 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun GameScreenPreview() {
         LocalContext.current
+        val navController = rememberNavController()
         RTSTheme {
-            GameScreen()
+            GameScreen(navController)
         }
     }
 }

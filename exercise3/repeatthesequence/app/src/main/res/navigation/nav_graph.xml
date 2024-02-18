@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <composable name="Home" route="Home"/>
+    <composable name="Game" route="Game"/>
+    <composable name="About" route="About"/>
+
+    <activity
+        android:id="@+id/mainActivity"
+        android:name="com.example.rts.MainActivity">
+        <action android:id="@+id/action_home_to_game" app:destination="@+id/Game"/>
+        <action android:id="@+id/action_home_to_about" app:destination="@+id/About"/>
+    </activity>
+
+</navigation>
