@@ -1,6 +1,8 @@
 //MainActivity.kt
 package com.example.rts
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -52,16 +54,20 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
+const val TOP_LEVEL_VALUE = "top_level"
+
 class MainActivity : ComponentActivity() {
     private val soundPlayer = SoundPlayer(this)
     private val interactionSource = List(4) { MutableInteractionSource() }
     private lateinit var viewModel: GameViewModel
     private lateinit var coroutineScope: CoroutineScope
+    private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sharedPreferences = getPreferences(Context.MODE_PRIVATE)
         viewModel = ViewModelProvider(
-            this, GameViewModelFactory(this, soundPlayer)
+            this, GameViewModelFactory(this, soundPlayer, getTopLevelValue())
         )[GameViewModel::class.java]
         coroutineScope = viewModel.viewModelScope
 
@@ -85,6 +91,19 @@ class MainActivity : ComponentActivity() {
                     }
 //                    GameScreen()
                 }
+            }
+        }
+    }
+
+    private fun getTopLevelValue(): Int {
+        return sharedPreferences.getInt(TOP_LEVEL_VALUE, 1)
+    }
+
+    private fun updateSharedPreferences(newTopLevel: Int) {
+        if (getTopLevelValue() < newTopLevel) {
+            with(sharedPreferences.edit()) {
+                putInt(TOP_LEVEL_VALUE, newTopLevel)
+                apply()
             }
         }
     }
@@ -166,8 +185,9 @@ class MainActivity : ComponentActivity() {
             gameOver.value = viewModel.state.value!!.gameOver.value
         }
 
-        if (!gameOver.value && !viewModel.state.value!!.waitForUserInput&&isEnabled.value) {
+        if (!gameOver.value && !viewModel.state.value!!.waitForUserInput && isEnabled.value) {
             isEnabled.value = false
+            updateSharedPreferences(viewModel.state.value!!.topLevel.intValue)
             playSequence(
                 viewModel = viewModel,
                 interactionSource = interactionSource,
@@ -181,33 +201,13 @@ class MainActivity : ComponentActivity() {
             ShowGameOverDialog(viewModel.state.value!!.currentLevel.intValue, {
                 viewModel.generateNewSequence()
                 viewModel = ViewModelProvider(
-                    this, GameViewModelFactory(this, soundPlayer)
+                    this, GameViewModelFactory(this, soundPlayer, getTopLevelValue())
                 )[GameViewModel::class.java]
                 coroutineScope = viewModel.viewModelScope
                 viewModel.state.value?.currentLevel?.intValue = 0
                 isEnabled.value = true
             }) {
-                setContent {
-                    RTSTheme {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.background
-                        ) {
-                            FreeGameScreen {
-                                setContent {
-                                    RTSTheme {
-                                        Surface(
-                                            modifier = Modifier.fillMaxSize(),
-                                            color = MaterialTheme.colorScheme.background
-                                        ) {
-                                            GameScreen(navController)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                navController.navigate("Home")
             }
         }
 
@@ -267,7 +267,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ShowGameOverDialog(currentLevel: Int, onRestart: () -> Unit, onFreeGame: () -> Unit) {
+    fun ShowGameOverDialog(currentLevel: Int, onRestart: () -> Unit, onHome: () -> Unit) {
         var dialogVisible by remember { mutableStateOf(true) }
         AlertDialog(
             onDismissRequest = {
@@ -279,9 +279,9 @@ class MainActivity : ComponentActivity() {
             confirmButton = {
                 Button(onClick = {
                     dialogVisible = false
-                    onFreeGame()
+                    onHome()
                 }) {
-                    Text("Free Game")
+                    Text("Home")
                 }
                 Button(onClick = {
                     viewModel.resetState()

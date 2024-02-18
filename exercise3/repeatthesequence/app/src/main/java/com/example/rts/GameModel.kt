@@ -9,7 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 
-class GameModel(private val context: Context) {
+class GameModel(private val context: Context, topLevelValue: Int) {
     private var _waitForUserInput = mutableStateOf(false)
     fun setWaitForUserInput(value: Boolean) {
         _waitForUserInput.value = value
@@ -21,7 +21,7 @@ class GameModel(private val context: Context) {
             return _waitForUserInput.value
         }
     var currentLevel = mutableIntStateOf(1)
-    var topLevel = mutableIntStateOf(1)
+    var topLevel = mutableIntStateOf(topLevelValue)
     var userPlaying = mutableStateOf(false)
     var gameOver = mutableStateOf(false)
     var userInput = mutableListOf<Int>()
