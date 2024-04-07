@@ -1,7 +1,10 @@
 //SoundUtil.kt
-package com.example.rts
+package com.example.rts.data
 
-object SoundUtil {
+import androidx.compose.ui.graphics.Color
+import com.example.rts.R
+
+object GameUtils {
     fun getSoundResource(soundId: Int): Int {
         return when (soundId) {
             0 -> R.raw.katana
@@ -20,5 +23,16 @@ object SoundUtil {
             3 -> "Shot"
             else -> throw IllegalArgumentException("Invalid sound ID")
         }
+    }
+
+    fun getResColor(colorId: String): Color {
+        val colorResId = when (colorId) {
+            "buttonColor1" -> R.color.buttonColor1
+            "buttonColor2" -> R.color.buttonColor2
+            "buttonColor3" -> R.color.buttonColor3
+            "buttonColor4" -> R.color.buttonColor4
+            else -> throw IllegalArgumentException("Invalid color ID")
+        }
+        return Color(colorResId)
     }
 }

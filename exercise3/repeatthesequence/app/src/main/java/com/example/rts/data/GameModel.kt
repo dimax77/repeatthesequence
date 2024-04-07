@@ -1,15 +1,13 @@
 // GameModel.kt
 package com.example.rts
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat
+import com.example.rts.utils.SoundUtil
 
-class GameModel(private val context: Context, topLevelValue: Int) {
+class GameModel(topLevelValue: Int) {
     private var _waitForUserInput = mutableStateOf(false)
     fun setWaitForUserInput(value: Boolean) {
         _waitForUserInput.value = value
@@ -32,9 +30,14 @@ class GameModel(private val context: Context, topLevelValue: Int) {
         )
     }
 
-    @SuppressLint("DiscouragedApi")
     private fun getResColor(colorId: String): Color {
-        val colorResId = context.resources.getIdentifier(colorId, "color", context.packageName)
-        return Color(ContextCompat.getColor(context, colorResId))
+        val colorResId = when (colorId) {
+            "buttonColor1" -> R.color.buttonColor1
+            "buttonColor2" -> R.color.buttonColor2
+            "buttonColor3" -> R.color.buttonColor3
+            "buttonColor4" -> R.color.buttonColor4
+            else -> throw IllegalArgumentException("Invalid color ID")
+        }
+        return Color(colorResId)
     }
 }
