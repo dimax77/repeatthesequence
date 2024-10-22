@@ -39,19 +39,23 @@ If the player makes a mistake, the game ends, and they have the option to restar
 To install and run the game on your Android device:
 
 Clone the repository:
-bash
-Копировать код
+
 git clone git@github.com:dimax77/repeatthesequence.git
+
 Open the project in Android Studio.
+
 Build and run the project on an emulator or a connected Android device.
-Alternatively, you can download the APK from the releases page and install it manually on your device.
 
 ## How to Play
 
 Launch the game.
+
 Watch and listen as the buttons light up in a random sequence.
+
 Repeat the sequence by pressing the buttons in the same order.
+
 After each successful attempt, a new button press is added to the sequence.
+
 The game continues until you make a mistake. Try to get the highest score!
 
 ## Contributing
